@@ -4,7 +4,7 @@ from gym.spaces import Box, Discrete, Dict
 import numpy as np
 import random
 from IPython.display import display
-from debug_func import watch_state,watch_mask,watch_obs
+from debug_func import watch_state,watch_mask,watch_obs,act_num2tensor,act_tensor2num
 class BlueRedEnv(MultiAgentEnv):
     observation_space = Dict(dict(observation=Box(
         0, 1, (9, 9, 3), np.int8), action_mask=Box(0, 1, (81,), np.int8)))
