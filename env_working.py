@@ -88,6 +88,9 @@ class BlueRedEnv(MultiAgentEnv):
             return tmp
 
     def _obs(self, players_):
+        # 返回一个dict，具体看kaggle_test_notebook
+        # observation: 9*9*3 第一个9*9是己方，第二个是对方，第三个是障碍物，称为‘Wall’
+        # action_mask: 9*9*4 代表上下左右
         d0=np.array([-1,1,0,0],dtype=np.int8)
         d1=np.array([0,0,-1,1],dtype=np.int8)
         def out_of_range(x,y):
