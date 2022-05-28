@@ -5,4 +5,4 @@ then info="更新~"
 fi
 git add -A
 git commit -m "$info"
-git push lkc hexo
+git push
