@@ -118,7 +118,7 @@ class BlueRedEnv(MultiAgentEnv):
             action_mask=np.stack(mask_list,axis=0).transpose(1,2,0)
             ret[self.players[player]]={
                 'observation': ob,
-                'action_mask': action_mask}
+                'action_mask': action_mask.reshape(324)}
         return ret
     def render(self):  # 可视化
         pass
