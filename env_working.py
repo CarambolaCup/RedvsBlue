@@ -35,55 +35,92 @@ class BlueRedEnv(MultiAgentEnv):
 
         return self._obs((0,))
 
-    def step(self, action_dict):  # action_dict是双方在该回合的动作
+    def step(self, action_dict):# action_dict是双方在该回合的动作
         # 输出为observation, reward, dones, info
         # observation格式为{players[0]:{'obs': ,'action_mask': }, players[1]: {'obs':, 'action_mask': }}
         # reward格式为{players[0]: 1, players[1]: -1}
         # dones格式为{players[0]: 0, players[1]: 0, '__all__': 0} ('__all__'表示是否所有人结束了)
         # info格式为{players[0]: {}, players[1]: {} }（给出额外信息，没有额外信息可以不填）
-        assert self.state is not None, "must call reset() first!"
-        pos = action_dict[self.players[self.cur_player]]
-        x, y = pos // 3, pos % 3
+        # assert self.state is not None, "must call reset() first!"
+        # action_dict即为由AI搞出来的当前这一步动作，一个玩家为一步，并不是两个玩家各走一步(lyj)
+        # 以500回合（双方各500个动作）为界限来判定是否为平局，如果超过500回合则我们判定为平局，其余必有输赢(lyj)
+        pos = action_dict[self.players[self.cur_player]]#玩家刚才走过的动作，以一个值表示
 
+        #将动作的值改为9*9*4的动作矩阵（lyj）
+        act = act_num2tensor(pos); #（lyj）
+        line,lie,direction=0,0,0#(lyj)
+        #(lyj)搞出动的行、列、方向
+        for i in range(9):
+            for j in range(9):
+                for k in range(4):
+                    if(act[i][j][k] != 0):
+                        line,lie,direction=i,j,k
         win = -2
         dones = {}
+        self.turns += 1#回合数增加1（lyj）
 
-        assert not self.state[x][y].any(), 'Invalid action!'
-        if self.state[x][y].any():
-            # Invalid action!
-            win = 1 - self.cur_player
-        else:
-            self.state[x][y][self.cur_player] = 1
-            if (self.state[x, :, self.cur_player].all()
-                        or self.state[:, y, self.cur_player].all()
-                        or x == y and self.state[:, :, self.cur_player].diagonal().all()
-                        or x + y == 2 and self.state[:, ::-1, self.cur_player].diagonal().all()
-                    ):
+        # assert not self.state[line][lie][1-self.cur_player]!=0, 'Invalid action!'
+        #（lyj）
+        #?????
+        self.state[line][lie][self.cur_player] = 0
+        if direction==0:
+            self.state[line-1][lie][self.cur_player]=1
+        elif direction==1:
+            self.state[line+1][lie][self.cur_player]=1
+        elif direction==2:
+            self.state[line][lie-1][self.cur_player]=1
+        elif direction==3:
+            self.state[line][lie+1][self.cur_player]=1
+
+        for i in range(9):
+            for j in range(9):
+                count=0
+                if i>=1 and self.state[i-1][j][self.cur_player]==1:count += 1
+                if j>=1 and self.state[i][j-1][self.cur_player]==1:count += 1
+                if j<=7 and self.state[i][j+1][self.cur_player]==1:count += 1
+                if i<=7 and self.state[i+1][j][self.cur_player]==1:count += 1
+                if count>=2:
+                    self.state[i][j][1-self.cur_player]=0
+
+        for i in range(9):
+            for j in range(9):
+                count=0
+                if i>=1 and self.state[i-1][j][1-self.cur_player]==1:count += 1
+                if j>=1 and self.state[i][j-1][1-self.cur_player]==1:count += 1
+                if j<=7 and self.state[i][j+1][1-self.cur_player]==1:count += 1
+                if i<=7 and self.state[i+1][j][1-self.cur_player]==1:count += 1
+                if count>=2:
+                    self.state[i][j][self.cur_player]=0
+
+        finished = True
+        for i in range(9):
+            for j in range(9):
+                if(self.state[i][j][1-self.cur_player]!=0):
+                    finished=False
+        if (finished):
                 # Win!
-                win = self.cur_player
-            elif self.state.sum() == 9:
+            win = self.cur_player
+        elif self.turns ==1000:#两个人一共走了1000回合（lyj）
                 # Tie!
-                win = -1
-
+            win = -1
         if win == -2:
-            # continue
+            # continue,not finished
             self.cur_player = 1 - self.cur_player
-            dones['__all__'] = dones[self.players[self.cur_player]] = False
+            #dones(lyj)
+            dones['__all__'] = dones[self.players[self.cur_player]] = True
             return self._obs((self.cur_player,)), {self.players[self.cur_player]: 0}, dones, {self.players[self.cur_player]: {}}
         else:
-            # finish
+            # finish,has a result
+            #write rewards
             rewards = {}
             if win == -1:
-                for player in self.players:
-                    rewards[player] = 0.0
+                for player in self.players: rewards[player] = 0.0
             else:
                 rewards[self.players[win]] = 1.0
                 rewards[self.players[1 - win]] = -1.0
             dones['__all__'] = True
-            for player in self.players:
-                dones[player] = True
-            tmp = (self._obs((0, 1)), rewards, dones, {
-                   player: {} for player in self.players})
+            for player in self.players: dones[player] = True
+            tmp = (self._obs((0, 1)), rewards, dones, {player: {} for player in self.players})
             self.state = None
             return tmp
 
