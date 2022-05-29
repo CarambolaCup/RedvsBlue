@@ -9,7 +9,7 @@ from debug_func import watch_state, watch_mask, watch_obs, act_num2tensor, act_t
 
 class BlueRedEnv(MultiAgentEnv):
     observation_space = Dict(dict(observation=Box(
-        0, 1, (9, 9, 3), np.int8), action_mask=Box(0, 1, (81,), np.int8)))
+        0, 1, (9, 9, 3), np.int8), action_mask=Box(0, 1, (324,), np.int8)))
     action_space = Discrete(81)
     players = ('player_1', 'player_2')
     directions = ['up', 'down', 'left', 'right']
