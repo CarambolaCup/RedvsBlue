@@ -1,4 +1,4 @@
-from env_working_mid import BlueRedEnv
+from env_working import BlueRedEnv
 from model.easy_model import MyModel
 from model.deeper_model import LSTMModel
 
