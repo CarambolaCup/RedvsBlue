@@ -3,7 +3,7 @@
 # 然后你返回给它一个batch的action
 # 实际上就是你要对每个obs给出一个action。
 # 只是系统会一次性给你batch_size个obs，然后你也一次性给它返回batch_size个action
-from audioop import reverse
+# from audioop import reverse
 from ray.rllib.policy.policy import Policy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -114,7 +114,7 @@ def obs2act(action_mask, observation):
     def move324(i, j, k):
         return i*36 + j * 4 + k
     pre_move = -1
-    action = action_mask.reshap(9, 9, 4)
+    action = action_mask.reshape(9, 9, 4)
     d0 = np.array([-1, 1, 0, 0], dtype=np.int8)
     d1 = np.array([0, 0, -1, 1], dtype=np.int8)
 
@@ -123,7 +123,7 @@ def obs2act(action_mask, observation):
         x, y, observation) for x, y in zip(pos[0], pos[1])]
 
     move_p = [move_pririty(a, d) for a, d in attitude]
-    move_queue = reverse(np.argsort(np.abs(move_p)))
+    move_queue = np.argsort(np.abs(move_p))[::-1]
     for i in move_queue:
         if np.any(action[pos[0][move_p[i]]][pos[1][move_p[i]]]):
             poss_act = np.nonzero(action[pos[0][move_p[i]]][pos[1][move_p[i]]])
