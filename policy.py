@@ -53,8 +53,8 @@ def player_situation_detect(x, y, observation):
     DEF = 0
     cpy_ally = 0
     cpy_enemy = 0
-    for offset_x in range(-3, +3):
-        for offset_y in range(-3, +3):
+    for offset_x in range(-3, +4):
+        for offset_y in range(-3, +4):
             if 0 <= x+offset_x and x+offset_x <= 8 and 0 <= y+offset_y and y+offset_y <= 8:
                 if not (0 == offset_x and 0 == offset_y):
                     if 1 == observation[x+offset_x][y+offset_y][ALLY]:
@@ -67,8 +67,8 @@ def player_situation_detect(x, y, observation):
                     elif 1 == observation[x+offset_x][y+offset_y][WALL]:
                         ATK = ATK - 20 // (abs(offset_x)+abs(offset_y))
                         DEF = DEF + 30 // (abs(offset_x)+abs(offset_y))
-    for offset_x in range(-3, +3):
-        for offset_y in range(-3, +3):
+    for offset_x in range(-3, +4):
+        for offset_y in range(-3, +4):
             if not (0 <= x+offset_x and x+offset_x <= 8 and 0 <= y+offset_y and y+offset_y <= 8):
                 if cpy_ally > cpy_enemy:
                     ATK = ATK + 25
@@ -88,8 +88,8 @@ def closest(x, y, observation):
     ally_y = 0
     enemy_x = 0
     enemy_y = 0
-    for offset_x in range(-3, +3):
-        for offset_y in range(-3, +3):
+    for offset_x in range(-3, +4):
+        for offset_y in range(-3, +4):
             if 0 <= x+offset_x and x+offset_x <= 8 and 0 <= y+offset_y and y+offset_y <= 8:
                 if not (0 == offset_x and 0 == offset_y):
                     if 1 == observation[x+offset_x][y+offset_y][ALLY]:
