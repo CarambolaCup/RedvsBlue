@@ -48,7 +48,6 @@ ALLY = 0
 ENEMY = 1
 WALL = 2
 
-
 def player_situation_detect(x, y, observation):
     ATK = 10
     DEF = 0
@@ -79,7 +78,7 @@ def player_situation_detect(x, y, observation):
 
 
 def move_pririty(ATK, DEF):
-    return ATK+DEF*3//2
+    return ATK+DEF / 2
 
 
 def closest(x, y, observation):
@@ -109,40 +108,43 @@ def closest(x, y, observation):
         enemy_y = y
     return ally_x, ally_y, enemy_x, enemy_y
 
-
 def obs2act(action_mask, observation):
     def move324(i, j, k):
         return i*36 + j * 4 + k
     pre_move = -1
-    action = action_mask.reshape(9, 9, 4)
+    action = action_mask.reshape(9,9,4)
     d0 = np.array([-1, 1, 0, 0], dtype=np.int8)
     d1 = np.array([0, 0, -1, 1], dtype=np.int8)
 
-    pos = np.nonzero(observation[ALLY])
+    pos = []
+    for x in range(9):
+        for y in range(9):
+            if observation[x][y][ALLY]:
+                pos.append((x,y))
     attitude = [player_situation_detect(
-        x, y, observation) for x, y in zip(pos[0], pos[1])]
+        x, y, observation) for x, y in pos]
 
     move_p = [move_pririty(a, d) for a, d in attitude]
     move_queue = np.argsort(np.abs(move_p))[::-1]
     for i in move_queue:
-        if np.any(action[pos[0][move_p[i]]][pos[1][move_p[i]]]):
-            poss_act = np.nonzero(action[pos[0][move_p[i]]][pos[1][move_p[i]]])
+        if np.any(action[pos[move_queue[i]][0]][pos[move_queue[i]][1]]):
+            poss_act = np.nonzero(action[pos[move_queue[i]][0]][pos[move_queue[i]][1]])
             a_x, a_y, e_x, e_y = closest(
-                pos[0][move_p[i]], pos[1][move_p[i]], observation)
+                pos[move_queue[i]][0], pos[move_queue[i]][1], observation)
             for j in range(4):
-                if 1 == action[pos[0][move_p[i]]][pos[1][move_p[i]]][j]:
+                if 1 == action[pos[move_queue[i]][0]][pos[move_queue[i]][1]][j]:
                     if -1 == pre_move:
                         pre_move = move324(
-                            pos[0][move_p[i]], pos[1][move_p[i]], j)
+                            pos[move_queue[i]][0], pos[move_queue[i]][1], j)
                     if move_p[i] > 0:
-                        if d0[j]*(e_x-pos[0][move_p[i]])+d1[j]*(e_y - pos[1][move_p[i]]) > 0:
+                        if d0[j]*(e_x-pos[move_queue[i]][0])+d1[j]*(e_y - pos[move_queue[i]][1]) > 0:
                             pre_move = move324(
-                                pos[0][move_p[i]], pos[1][move_p[i]], j)
+                                pos[move_queue[i]][0], pos[move_queue[i]][1], j)
                             return pre_move
                     else:
-                        if d0[j]*(a_x-pos[0][move_p[i]])+d1[j]*(a_y - pos[1][move_p[i]]) > 0:
+                        if d0[j]*(a_x-pos[move_queue[i]][0])+d1[j]*(a_y - pos[move_queue[i]][1]) > 0:
                             pre_move = move324(
-                                pos[0][move_p[i]], pos[1][move_p[i]], j)
+                                pos[move_queue[i]][0], pos[move_queue[i]][1], j)
                             return pre_move
     return pre_move
 
