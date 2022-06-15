@@ -8,10 +8,14 @@ from ray.rllib.policy.policy import Policy
 import numpy as np
 import matplotlib.pyplot as plt
 # import matplotlib.image as mpimg # mpimg 用于读取图片
-from IPython.display import clear_output
+# from IPython.display import clear_output
 
 
-def show_fig(state):
+def show_fig(state,pos):
+    if pos=='red':
+        setting=('red','blue')
+    else:
+        setting=('blue','red')
     width = height = 9
     vlines = np.linspace(-0.5, -0.5+width, width+1)
     hlines = np.linspace(-0.5, -0.5+height, height+1)
@@ -30,12 +34,15 @@ def show_fig(state):
         y = blue_pos[0][i]
         x = blue_pos[1][i]
         plt.fill([x+0.5, x+0.5, x-0.5, x-0.5],
-                 [y-0.5, y+0.5, y+0.5, y-0.5], 'blue')
+                 [y-0.5, y+0.5, y+0.5, y-0.5], setting[1])
     for i in range(len(red_pos[0])):
         y = red_pos[0][i]
         x = red_pos[1][i]
         plt.fill([x+0.5, x+0.5, x-0.5, x-0.5],
-                 [y-0.5, y+0.5, y+0.5, y-0.5], 'red')
+                 [y-0.5, y+0.5, y+0.5, y-0.5], setting[0])
+    for i in range(9):
+        plt.text(-1, i, f'{i}')
+        plt.text(i, -1, f'{i}')
     plt.axis('equal')
 #   plt.savefig('a.png',format='png',dpi=600)
 #   a = mpimg.imread('./a.png')
@@ -205,27 +212,29 @@ class FirstValidPolicy(Policy):
 
 class HumanPolicy(Policy):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, observation_space,action_space,config,*args, **kwargs):
+        super().__init__(observation_space,action_space,config,*args, **kwargs)
+        self.pos=config['pos']
 
     def compute_actions(self, obs_batch, *args, **kwargs):
         # player_name = list(obs.keys())[0]
         # assert len(list(obs.keys())) == 1, 'obs中的玩家数多于一个'
         # obs = obs[player_name]
         act_batch = []
-        for obs in obs_batch:
+        for n in range(len(obs_batch['observation'])):
+            obs={'observation':obs_batch['observation'][n],'action_mask':obs_batch['action_mask'][n]}
             while(1):
-                show_fig(obs['observation'])
+                show_fig(obs['observation'],self.pos)
                 row, col, direction = map(int, input(
                     "请输入行、列(0~8)和方向(0~3)(上下左右)，空格隔开：").split())
                 if not (row in range(9) and col in range(9) and direction in range(4)):
                     # os.system('cls') # 执行cls命令清空Python控制台
-                    clear_output()  # 清空Notebook代码块输出
+                    # clear_output()  # 清空Notebook代码块输出
                     print('请正确输入行/列/方向！！！')
                     continue
                 if obs['action_mask'].reshape(9, 9, 4)[row][col][direction] == 0:
                     # os.system('cls') # 执行cls命令清空Python控制台
-                    clear_output()  # 清空Notebook代码块输出
+                    # clear_output()  # 清空Notebook代码块输出
                     print('非法动作！！！')
                     continue
                 break

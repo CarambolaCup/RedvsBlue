@@ -3,6 +3,11 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from gym.spaces import Box, Discrete, Dict
 import numpy as np
 import random
+import gif
+import matplotlib.pyplot as plt
+import time
+import os
+
 
 class BlueRedEnv(MultiAgentEnv):
     observation_space = Dict(dict(observation=Box(
@@ -14,10 +19,20 @@ class BlueRedEnv(MultiAgentEnv):
     def __init__(self, config):
         self.state = None
         self.board_size = 8
+        self.width = 9
+        self.height = 9
         # self.players_1 = 0
         # self.players_2 = 1
         self.block = 2
         self.turns = None
+
+        self.mid_reward = config['mid_reward']
+        self.final_time = config['final_time']
+
+        self.render_env = config['render']
+        self.render_count = 0
+        self.render_frame = []
+        self.dir_name = int(time.time())
 
     def reset(self):
         self.turns = 0
@@ -29,11 +44,25 @@ class BlueRedEnv(MultiAgentEnv):
             self.state[player_init_place[i][0]][player_init_place[i][1]][0] = 1
             self.state[self.board_size - player_init_place[i][0]
                        ][self.board_size - player_init_place[i][1]][1] = 1
-        rand_key = random.sample(range(0, 24), 2)
+        # rand_key = random.sample(range(0, 24), 2)
+        # for i in range(0, 2):
+        #     self.state[1+rand_key[i] // 7][1+rand_key[i] % 7][self.block] = 1
+        #     self.state[self.board_size-1-rand_key[i] //
+        #                7][self.board_size-1-rand_key[i] % 7][self.block] = 1
+        rand_key = random.sample(range(0, 12), 2)
         for i in range(0, 2):
-            self.state[1+rand_key[i] // 7][1+rand_key[i] % 7][self.block] = 1
-            self.state[self.board_size-1-rand_key[i] //
-                       7][self.board_size-1-rand_key[i] % 7][self.block] = 1
+            self.state[2+rand_key[i] // 5][2+rand_key[i] % 5][self.block] = 1
+            self.state[self.board_size-2-rand_key[i] //
+                       5][self.board_size-2-rand_key[i] % 5][self.block] = 1
+
+        if self.render_env:
+            if not os.path.exists(f'./gif/exp{self.dir_name}'):
+                os.makedirs(f'./gif/exp{self.dir_name}')
+            if len(self.render_frame) != 0:
+                self.render_count += 1
+                gif.save(self.render_frame, path=f'./gif/exp{self.dir_name}/gif{self.render_count}.gif',
+                         duration=100, unit='milliseconds', between='frames', loop=True)
+                self.render_frame = []
 
         return self._obs((0,))
 
@@ -64,6 +93,7 @@ class BlueRedEnv(MultiAgentEnv):
         # assert not self.state[line][lie][1-self.cur_player]!=0, 'Invalid action!'
         # （lyj）
         # ?????
+        rewards = {'player_1': 0, 'player_2': 0}
         self.state[line][lie][self.cur_player] = 0
         if direction == 0:
             self.state[line-1][lie][self.cur_player] = 1
@@ -85,8 +115,9 @@ class BlueRedEnv(MultiAgentEnv):
                     count += 1
                 if i <= 7 and self.state[i+1][j][self.cur_player] == 1:
                     count += 1
-                if count >= 2:
+                if count >= 2 and self.state[i][j][1-self.cur_player] == 1:
                     self.state[i][j][1-self.cur_player] = 0
+                    rewards[self.players[self.cur_player]] += self.mid_reward
 
         for i in range(9):
             for j in range(9):
@@ -99,8 +130,9 @@ class BlueRedEnv(MultiAgentEnv):
                     count += 1
                 if i <= 7 and self.state[i+1][j][1-self.cur_player] == 1:
                     count += 1
-                if count >= 2:
+                if count >= 2 and self.state[i][j][self.cur_player] == 1:
                     self.state[i][j][self.cur_player] = 0
+                    rewards[self.players[1-self.cur_player]] += self.mid_reward
 
         finished = True
         for i in range(9):
@@ -110,31 +142,31 @@ class BlueRedEnv(MultiAgentEnv):
         if (finished):
             # Win!
             win = self.cur_player
-        elif self.turns == 1000:  # 两个人一共走了1000回合（lyj）
+        elif self.turns == self.final_time:  # 两个人一共走了1000回合（lyj）
             # Tie!
             win = -1
+
         if win == -2:
             # continue,not finished
             self.cur_player = 1 - self.cur_player
             # dones(lyj)
             dones['__all__'] = dones[self.players[self.cur_player]] = False
-            return self._obs((self.cur_player,)), {self.players[self.cur_player]: 0}, dones, {self.players[self.cur_player]: {}}
+            return self._obs((self.cur_player,)), rewards, dones, {self.players[self.cur_player]: {}}
         else:
             # finish,has a result
             # write rewards
-            rewards = {}
+            # rewards = {}
             if win == -1:
                 for player in self.players:
-                    rewards[player] = 0
+                    rewards[player] += 0
             else:
-                rewards[self.players[win]] = 1.0
-                rewards[self.players[1 - win]] = -1.0
+                rewards[self.players[win]] += 1.0
+                rewards[self.players[1 - win]] += -1.0
             dones['__all__'] = True
             for player in self.players:
                 dones[player] = True
             tmp = (self._obs((0, 1)), rewards, dones, {
                    player: {} for player in self.players})
-            self.state = None
             return tmp
 
     def _obs(self, players_):
@@ -173,13 +205,42 @@ class BlueRedEnv(MultiAgentEnv):
                 'action_mask': action_mask.reshape(324)}
         return ret
 
-    def act_num2tensor(self,n):
-        act=np.zeros(324,dtype=np.int8)
-        act[n]=1
-        act_=act.reshape(9,9,4)
+    def act_num2tensor(self, n):
+        act = np.zeros(324, dtype=np.int8)
+        act[n] = 1
+        act_ = act.reshape(9, 9, 4)
         return act_
 
-    def render(self):  # 可视化
-        pass
+    def render(self):
+        @gif.frame
+        def plot():
+            vlines = np.linspace(-0.5, -0.5+self.width, self.width+1)
+            hlines = np.linspace(-0.5, -0.5+self.height, self.height+1)
+            plt.hlines(hlines, -0.5, -0.5+self.width)
+            plt.vlines(vlines, -0.5, -0.5+self.height)
+            plt.axis('off')
+            block_pos = np.nonzero(self.state[:, :, 2])
+            blue_pos = np.nonzero(self.state[:, :, 1])
+            red_pos = np.nonzero(self.state[:, :, 0])
 
-
+            for i in range(len(block_pos[0])):
+                y = block_pos[0][i]
+                x = block_pos[1][i]
+                plt.fill([x+0.5, x+0.5, x-0.5, x-0.5],
+                         [y-0.5, y+0.5, y+0.5, y-0.5], 'black')
+            for i in range(len(blue_pos[0])):
+                y = blue_pos[0][i]
+                x = blue_pos[1][i]
+                plt.fill([x+0.5, x+0.5, x-0.5, x-0.5],
+                         [y-0.5, y+0.5, y+0.5, y-0.5], 'blue')
+            for i in range(len(red_pos[0])):
+                y = red_pos[0][i]
+                x = red_pos[1][i]
+                plt.fill([x+0.5, x+0.5, x-0.5, x-0.5],
+                         [y-0.5, y+0.5, y+0.5, y-0.5], 'red')
+            for i in range(9):
+                plt.text(-1, i, f'{i}')
+                plt.text(i, -1, f'{i}')
+            plt.axis('equal')
+        self.render_frame.append(plot())
+        return True
